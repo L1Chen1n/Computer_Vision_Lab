@@ -93,23 +93,20 @@ import cv2
 from skimage import transform, util, img_as_ubyte
 
 
-img1 = cv2.imread("Lab2/img3.jpg")
+img1 = cv2.imread("Lab2\img3.jpg")
 img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
 
-img2 = cv2.imread("Lab2/img4.jpg")
+img2 = cv2.imread("Lab2\img4.jpg")
 img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
 
 height1, width1 = img1.shape[:2]
 height2, width2 = img2.shape[:2]
 
-ratio1 = 500 / width1
-new_height1 = int(ratio1 * height1)
+ratio = 1000 / width1
 
-ratio2 = 500 / width2
-new_height2 = int(ratio2 * height2)
 
-img1 = cv2.resize(img1, (500, new_height1))
-img2 = cv2.resize(img2, (500, new_height2))
+img1 = cv2.resize(img1, (1000, int(height1 * ratio)))
+img2 = cv2.resize(img2, (1000, int(height2 * ratio)))
 
 sift = cv2.SIFT.create()
 
@@ -127,7 +124,7 @@ bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
 matches = bf.knnMatch(img1_dp, img2_dp, k=2)
 good_matches = []
 for m, n in matches:
-    if m.distance < n.distance * 0.5:
+    if m.distance < n.distance * 0.75:
         good_matches.append(m)
 
 img_matches = cv2.drawMatches(img1, img1_kp, img2, img2_kp, good_matches, (255, 0, 0), (255, 0, 0), flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
@@ -139,29 +136,37 @@ H, mask = cv2.findHomography(img1_pts, img2_pts, cv2.RANSAC, 5.0)
 
 h1, w1, _ = img1.shape
 h2, w2, _ = img2.shape
-# Compute the corners of img1 after transformation
+
 pts_img1 = np.float32([[0, 0], [0, h1], [w1, h1], [w1, 0]]).reshape(-1, 1, 2)
 pts_transformed = cv2.perspectiveTransform(pts_img1, H)
 
-# Get the bounding box for the final stitched image
+
 pts_img2 = np.float32([[0, 0], [0, h2], [w2, h2], [w2, 0]]).reshape(-1, 1, 2)
 pts_combined = np.concatenate((pts_transformed, pts_img2), axis=0)
 
 [x_min, y_min] = np.int32(pts_combined.min(axis=0).ravel())
 [x_max, y_max] = np.int32(pts_combined.max(axis=0).ravel())
 
-# Compute translation matrix to adjust for negative offsets
 translation = np.array([[1, 0, -x_min], [0, 1, -y_min], [0, 0, 1]])
 
-# Warp img1 using the homography transformation
 stitched_img = cv2.warpPerspective(img1, translation @ H, (x_max - x_min, y_max - y_min))
 
-# Overlay img2 onto the stitched image
 stitched_img[-y_min:h2 - y_min, -x_min:w2 - x_min] = img2
 
-# Display the final stitched image without resizing
+# y = 0
+# for m in stitched_img:
+#     if sum(m[-1]) != 0:
+#         break
+#     y += 1
+# print(y)
+x_start, y_start = 860, 1074
+x_end, y_end = 3477, 1074 + 1333
+cropped_image = stitched_img[y_start:y_end, x_start:x_end]
+
 plt.figure(figsize=(12, 6))
-plt.imshow(stitched_img)
-plt.axis('off')
-plt.title('Stitched Image')
+plt.imshow(cropped_image)
 plt.show()
+print(1074 + 1333)
+# 860  1074
+
+#((860, 1074), (3477, 1074 + 1333))
